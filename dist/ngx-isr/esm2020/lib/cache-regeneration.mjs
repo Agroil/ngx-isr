@@ -1,0 +1,38 @@
+import { renderUrl } from './utils/render-url';
+import { getISROptions } from './utils/get-isr-options';
+export class CacheRegeneration {
+    constructor(cache, indexHtml) {
+        this.cache = cache;
+        this.indexHtml = indexHtml;
+        this.urlsOnHold = []; // urls that have regeneration loading
+    }
+    async regenerate(req, res, cacheData, showLogs = false, providers) {
+        const { url } = req;
+        if (this.urlsOnHold.includes(url)) {
+            showLogs && console.log('Another regeneration is on-going...');
+            return;
+        }
+        const { options } = cacheData;
+        const { revalidate } = options;
+        showLogs &&
+            console.log(`The url: ${url} will be regenerated after ${revalidate} s.`);
+        this.urlsOnHold.push(url);
+        setTimeout(() => {
+            // re-render the page again
+            renderUrl({ req, res, url, indexHtml: this.indexHtml, providers }).then((html) => {
+                const { errors } = getISROptions(html);
+                if (errors?.length) {
+                    showLogs && console.error('💥 ERROR: Url: ' + url + ' was not regenerated!', errors);
+                    return;
+                }
+                // add the regenerated page to cache
+                this.cache.add(req.url, html, { revalidate }).then(() => {
+                    // remove url from urlsOnHold
+                    this.urlsOnHold = this.urlsOnHold.filter((x) => x !== url);
+                    showLogs && console.log('Url: ' + url + ' was regenerated!');
+                });
+            });
+        }, revalidate * 1000); // revalidate value is in seconds, so we convert it in milliseconds
+    }
+}
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiY2FjaGUtcmVnZW5lcmF0aW9uLmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsiLi4vLi4vLi4vLi4vcHJvamVjdHMvbmd4LWlzci9zcmMvbGliL2NhY2hlLXJlZ2VuZXJhdGlvbi50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiQUFFQSxPQUFPLEVBQUUsU0FBUyxFQUFFLE1BQU0sb0JBQW9CLENBQUM7QUFDL0MsT0FBTyxFQUFFLGFBQWEsRUFBRSxNQUFNLHlCQUF5QixDQUFDO0FBRXhELE1BQU0sT0FBTyxpQkFBaUI7SUFHNUIsWUFBbUIsS0FBbUIsRUFBUyxTQUFpQjtRQUE3QyxVQUFLLEdBQUwsS0FBSyxDQUFjO1FBQVMsY0FBUyxHQUFULFNBQVMsQ0FBUTtRQUZ4RCxlQUFVLEdBQWEsRUFBRSxDQUFDLENBQUMsc0NBQXNDO0lBRU4sQ0FBQztJQUVwRSxLQUFLLENBQUMsVUFBVSxDQUNkLEdBQVEsRUFDUixHQUFRLEVBQ1IsU0FBb0IsRUFDcEIsUUFBUSxHQUFHLEtBQUssRUFDaEIsU0FBc0I7UUFFdEIsTUFBTSxFQUFFLEdBQUcsRUFBRSxHQUFHLEdBQUcsQ0FBQztRQUVwQixJQUFJLElBQUksQ0FBQyxVQUFVLENBQUMsUUFBUSxDQUFDLEdBQUcsQ0FBQyxFQUFFO1lBQ2pDLFFBQVEsSUFBSSxPQUFPLENBQUMsR0FBRyxDQUFDLHFDQUFxQyxDQUFDLENBQUM7WUFDL0QsT0FBTztTQUNSO1FBRUQsTUFBTSxFQUFFLE9BQU8sRUFBRSxHQUFHLFNBQVMsQ0FBQztRQUM5QixNQUFNLEVBQUUsVUFBVSxFQUFFLEdBQUcsT0FBTyxDQUFDO1FBRS9CLFFBQVE7WUFDTixPQUFPLENBQUMsR0FBRyxDQUFDLFlBQVksR0FBRyw4QkFBOEIsVUFBVSxLQUFLLENBQUMsQ0FBQztRQUU1RSxJQUFJLENBQUMsVUFBVSxDQUFDLElBQUksQ0FBQyxHQUFHLENBQUMsQ0FBQztRQUUxQixVQUFVLENBQUMsR0FBRyxFQUFFO1lBQ2QsMkJBQTJCO1lBQzNCLFNBQVMsQ0FBQyxFQUFFLEdBQUcsRUFBRSxHQUFHLEVBQUUsR0FBRyxFQUFFLFNBQVMsRUFBRSxJQUFJLENBQUMsU0FBUyxFQUFFLFNBQVMsRUFBRSxDQUFDLENBQUMsSUFBSSxDQUNyRSxDQUFDLElBQUksRUFBRSxFQUFFO2dCQUNQLE1BQU0sRUFBRSxNQUFNLEVBQUUsR0FBRyxhQUFhLENBQUMsSUFBSSxDQUFDLENBQUM7Z0JBRXZDLElBQUksTUFBTSxFQUFFLE1BQU0sRUFBRTtvQkFDbEIsUUFBUSxJQUFJLE9BQU8sQ0FBQyxLQUFLLENBQUMsaUJBQWlCLEdBQUcsR0FBRyxHQUFHLHVCQUF1QixFQUFFLE1BQU0sQ0FBQyxDQUFDO29CQUNyRixPQUFPO2lCQUNSO2dCQUVELG9DQUFvQztnQkFDcEMsSUFBSSxDQUFDLEtBQUssQ0FBQyxHQUFHLENBQUMsR0FBRyxDQUFDLEdBQUcsRUFBRSxJQUFJLEVBQUUsRUFBRSxVQUFVLEVBQUUsQ0FBQyxDQUFDLElBQUksQ0FBQyxHQUFHLEVBQUU7b0JBQ3RELDZCQUE2QjtvQkFDN0IsSUFBSSxDQUFDLFVBQVUsR0FBRyxJQUFJLENBQUMsVUFBVSxDQUFDLE1BQU0sQ0FBQyxDQUFDLENBQUMsRUFBRSxFQUFFLENBQUMsQ0FBQyxLQUFLLEdBQUcsQ0FBQyxDQUFDO29CQUMzRCxRQUFRLElBQUksT0FBTyxDQUFDLEdBQUcsQ0FBQyxPQUFPLEdBQUcsR0FBRyxHQUFHLG1CQUFtQixDQUFDLENBQUM7Z0JBQy9ELENBQUMsQ0FBQyxDQUFDO1lBQ0wsQ0FBQyxDQUNGLENBQUM7UUFDSixDQUFDLEVBQUUsVUFBVyxHQUFHLElBQUksQ0FBQyxDQUFDLENBQUMsbUVBQW1FO0lBQzdGLENBQUM7Q0FDRiIsInNvdXJjZXNDb250ZW50IjpbImltcG9ydCB7IFByb3ZpZGVyIH0gZnJvbSAnQGFuZ3VsYXIvY29yZSc7XG5pbXBvcnQgeyBDYWNoZURhdGEsIENhY2hlSGFuZGxlciB9IGZyb20gJy4vbW9kZWxzJztcbmltcG9ydCB7IHJlbmRlclVybCB9IGZyb20gJy4vdXRpbHMvcmVuZGVyLXVybCc7XG5pbXBvcnQgeyBnZXRJU1JPcHRpb25zIH0gZnJvbSAnLi91dGlscy9nZXQtaXNyLW9wdGlvbnMnO1xuXG5leHBvcnQgY2xhc3MgQ2FjaGVSZWdlbmVyYXRpb24ge1xuICBwcml2YXRlIHVybHNPbkhvbGQ6IHN0cmluZ1tdID0gW107IC8vIHVybHMgdGhhdCBoYXZlIHJlZ2VuZXJhdGlvbiBsb2FkaW5nXG5cbiAgY29uc3RydWN0b3IocHVibGljIGNhY2hlOiBDYWNoZUhhbmRsZXIsIHB1YmxpYyBpbmRleEh0bWw6IHN0cmluZykge31cblxuICBhc3luYyByZWdlbmVyYXRlKFxuICAgIHJlcTogYW55LFxuICAgIHJlczogYW55LFxuICAgIGNhY2hlRGF0YTogQ2FjaGVEYXRhLFxuICAgIHNob3dMb2dzID0gZmFsc2UsXG4gICAgcHJvdmlkZXJzPzogUHJvdmlkZXJbXVxuICApOiBQcm9taXNlPHZvaWQ+IHtcbiAgICBjb25zdCB7IHVybCB9ID0gcmVxO1xuXG4gICAgaWYgKHRoaXMudXJsc09uSG9sZC5pbmNsdWRlcyh1cmwpKSB7XG4gICAgICBzaG93TG9ncyAmJiBjb25zb2xlLmxvZygnQW5vdGhlciByZWdlbmVyYXRpb24gaXMgb24tZ29pbmcuLi4nKTtcbiAgICAgIHJldHVybjtcbiAgICB9XG5cbiAgICBjb25zdCB7IG9wdGlvbnMgfSA9IGNhY2hlRGF0YTtcbiAgICBjb25zdCB7IHJldmFsaWRhdGUgfSA9IG9wdGlvbnM7XG5cbiAgICBzaG93TG9ncyAmJlxuICAgICAgY29uc29sZS5sb2coYFRoZSB1cmw6ICR7dXJsfSB3aWxsIGJlIHJlZ2VuZXJhdGVkIGFmdGVyICR7cmV2YWxpZGF0ZX0gcy5gKTtcblxuICAgIHRoaXMudXJsc09uSG9sZC5wdXNoKHVybCk7XG5cbiAgICBzZXRUaW1lb3V0KCgpID0+IHtcbiAgICAgIC8vIHJlLXJlbmRlciB0aGUgcGFnZSBhZ2FpblxuICAgICAgcmVuZGVyVXJsKHsgcmVxLCByZXMsIHVybCwgaW5kZXhIdG1sOiB0aGlzLmluZGV4SHRtbCwgcHJvdmlkZXJzIH0pLnRoZW4oXG4gICAgICAgIChodG1sKSA9PiB7XG4gICAgICAgICAgY29uc3QgeyBlcnJvcnMgfSA9IGdldElTUk9wdGlvbnMoaHRtbCk7XG5cbiAgICAgICAgICBpZiAoZXJyb3JzPy5sZW5ndGgpIHtcbiAgICAgICAgICAgIHNob3dMb2dzICYmIGNvbnNvbGUuZXJyb3IoJ/CfkqUgRVJST1I6IFVybDogJyArIHVybCArICcgd2FzIG5vdCByZWdlbmVyYXRlZCEnLCBlcnJvcnMpO1xuICAgICAgICAgICAgcmV0dXJuO1xuICAgICAgICAgIH1cblxuICAgICAgICAgIC8vIGFkZCB0aGUgcmVnZW5lcmF0ZWQgcGFnZSB0byBjYWNoZVxuICAgICAgICAgIHRoaXMuY2FjaGUuYWRkKHJlcS51cmwsIGh0bWwsIHsgcmV2YWxpZGF0ZSB9KS50aGVuKCgpID0+IHtcbiAgICAgICAgICAgIC8vIHJlbW92ZSB1cmwgZnJvbSB1cmxzT25Ib2xkXG4gICAgICAgICAgICB0aGlzLnVybHNPbkhvbGQgPSB0aGlzLnVybHNPbkhvbGQuZmlsdGVyKCh4KSA9PiB4ICE9PSB1cmwpO1xuICAgICAgICAgICAgc2hvd0xvZ3MgJiYgY29uc29sZS5sb2coJ1VybDogJyArIHVybCArICcgd2FzIHJlZ2VuZXJhdGVkIScpO1xuICAgICAgICAgIH0pO1xuICAgICAgICB9XG4gICAgICApO1xuICAgIH0sIHJldmFsaWRhdGUhICogMTAwMCk7IC8vIHJldmFsaWRhdGUgdmFsdWUgaXMgaW4gc2Vjb25kcywgc28gd2UgY29udmVydCBpdCBpbiBtaWxsaXNlY29uZHNcbiAgfVxufVxuIl19
